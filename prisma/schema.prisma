@@ -1,0 +1,43 @@
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+model User {
+    id        String   @id @default(cuid())
+    email     String   @unique
+    name      String
+    phone     String?
+    city      String
+    address   String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    account   Account?
+    books     Book[]
+}
+
+model Account {
+    id          String   @id @default(cuid())
+    accountType String // e.g., "savings", "checking"
+    accountNo   String   @unique
+    userId      String   @unique
+    user        User     @relation(fields: [userId], references: [id])
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+}
+
+model Book {
+    id         String   @id @default(cuid())
+    title      String
+    details    String?
+    userId     String
+    user       User     @relation(fields: [userId], references: [id])
+    city       String
+    exportedAt DateTime @default(now())
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+}
