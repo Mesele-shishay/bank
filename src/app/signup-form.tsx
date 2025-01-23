@@ -34,6 +34,9 @@ const formSchema = z.object({
   accountType: z.enum(["savings"], {
     required_error: "Please select an account type",
   }),
+  city: z.enum(["mekelle"], {
+    required_error: "Please select an city",
+  }),
   initialDeposit: z
     .number()
     .min(100, "Initial deposit must be at least $100")
@@ -147,7 +150,7 @@ export function SignUpForm() {
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="address">City</Label>
             <Controller
               name="city"
               control={control}

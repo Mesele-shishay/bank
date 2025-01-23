@@ -79,7 +79,7 @@ const AccountSchema = z.object({
 export async function createAccount(data: z.infer<typeof AccountSchema>) {
   try {
     const validatedData = AccountSchema.parse(data);
-    const account = await prisma.user.create({);
+    const account = await prisma.user.create({});
     revalidatePath("/accounts");
     return { success: true, account };
   } catch (error) {
