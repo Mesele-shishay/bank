@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -15,8 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  EyeIcon,
-  EyeOffIcon,
   UserIcon,
   MailIcon,
   PhoneIcon,
@@ -25,6 +25,25 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createAccount } from "@/actions";
+
+const formSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  address: z.string().min(5, "Address must be at least 5 characters"),
+  accountType: z.enum(["savings"], {
+    required_error: "Please select an account type",
+  }),
+  initialDeposit: z
+    .number()
+    .min(100, "Initial deposit must be at least $100")
+    .default(50),
+  terms: z
+    .boolean()
+    .refine((val) => val === true, "You must accept the terms and conditions"),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -37,8 +56,18 @@ function SubmitButton() {
 }
 
 export function SignUpForm() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [state, formAction] = useActionState(createAccount, null);
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
+
+  const onSubmit = async (data: FormData) => {
+    await createAccount(data);
+  };
 
   return (
     <div className="space-y-6">
@@ -51,22 +80,21 @@ export function SignUpForm() {
         </p>
       </div>
 
-      <form className="space-y-4" action={formAction}>
+      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <div className="relative">
               <Input
                 id="name"
-                name="name"
+                {...register("name")}
                 placeholder="Enter full name"
-                required
                 className="pl-10"
               />
               <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
             </div>
-            {state?.error?.name && (
-              <p className="text-sm text-red-500">{state.error.name[0]}</p>
+            {errors.name && (
+              <p className="text-sm text-red-500">{errors.name.message}</p>
             )}
           </div>
 
@@ -75,32 +103,32 @@ export function SignUpForm() {
             <div className="relative">
               <Input
                 id="email"
-                name="email"
+                {...register("email")}
                 type="email"
                 placeholder="Enter email"
-                required
                 className="pl-10"
               />
               <MailIcon className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
             </div>
-            {state?.error?.email && (
-              <p className="text-sm text-red-500">{state.error.email[0]}</p>
+            {errors.email && (
+              <p className="text-sm text-red-500">{errors.email.message}</p>
             )}
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
             <div className="relative">
               <Input
                 id="phone"
-                name="phone"
+                {...register("phone")}
                 type="tel"
                 placeholder="Enter phone number"
-                required
                 className="pl-10"
               />
               <PhoneIcon className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
             </div>
+            {errors.phone && (
+              <p className="text-sm text-red-500">{errors.phone.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -108,27 +136,64 @@ export function SignUpForm() {
             <div className="relative">
               <Input
                 id="address"
-                name="address"
+                {...register("address")}
                 placeholder="Enter address"
-                required
                 className="pl-10"
               />
               <HomeIcon className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
             </div>
+            {errors.address && (
+              <p className="text-sm text-red-500">{errors.address.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="address">Address</Label>
+            <Controller
+              name="city"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="savings">Savings</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.address && (
+              <p className="text-sm text-red-500">{errors.address.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="accountType">Account Type</Label>
-            <Select name="accountType" required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select account type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="savings">Savings</SelectItem>
-                <SelectItem value="checking">Checking</SelectItem>
-                <SelectItem value="business">Business</SelectItem>
-              </SelectContent>
-            </Select>
+            <Controller
+              name="accountType"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="savings">Savings</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.accountType && (
+              <p className="text-sm text-red-500">
+                {errors.accountType.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -136,47 +201,33 @@ export function SignUpForm() {
             <div className="relative">
               <Input
                 id="initialDeposit"
-                name="initialDeposit"
+                {...register("initialDeposit", { valueAsNumber: true })}
                 type="number"
                 placeholder="Enter initial deposit"
-                required
                 className="pl-10"
               />
               <CreditCardIcon className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter password"
-                required
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
-              >
-                {showPassword ? (
-                  <EyeOffIcon className="h-5 w-5" />
-                ) : (
-                  <EyeIcon className="h-5 w-5" />
-                )}
-              </button>
-            </div>
-            {state?.error?.password && (
-              <p className="text-sm text-red-500">{state.error.password[0]}</p>
+            {errors.initialDeposit && (
+              <p className="text-sm text-red-500">
+                {errors.initialDeposit.message}
+              </p>
             )}
           </div>
         </div>
 
         <div className="flex items-center space-x-2">
-          <Checkbox id="terms" name="terms" />
+          <Controller
+            name="terms"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                id="terms"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
           <label
             htmlFor="terms"
             className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -187,8 +238,8 @@ export function SignUpForm() {
             </Link>
           </label>
         </div>
-        {state?.error?.terms && (
-          <p className="text-sm text-red-500">{state.error.terms[0]}</p>
+        {errors.terms && (
+          <p className="text-sm text-red-500">{errors.terms.message}</p>
         )}
 
         <SubmitButton />
