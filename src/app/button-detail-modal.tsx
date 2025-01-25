@@ -39,6 +39,7 @@ export function BookDetailModal({
 
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const selectedCityName = cities.filter((city) => city.id == selectedCity);
 
   const handleExport = async () => {
     if (selectedCity) {
@@ -52,10 +53,7 @@ export function BookDetailModal({
               const workBook = XLSL.utils.book_new();
               const workSheet = XLSL.utils.json_to_sheet(result.userData);
               XLSL.utils.book_append_sheet(workBook, workSheet, "Sheet1");
-              XLSL.writeFile(
-                workBook,
-                `user_data_for_${bank} Bank_${selectedCity}.xlsx`
-              );
+              XLSL.writeFile(workBook, `user_data_for_${bank}_bank.xlsx`);
             };
 
             handleExport();
@@ -77,7 +75,6 @@ export function BookDetailModal({
   };
 
   const verifyPassword = (inputPassword: string) => {
-    // Replace this with your actual password verification logic
     const correctPassword = "password";
     return inputPassword === correctPassword;
   };
