@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { exportUserData } from "@/actions";
-
+import * as XLSL from "xlsx";
 type City = {
   id: number;
   state_id: number;
@@ -48,16 +47,19 @@ export function BookDetailModal({
         setPasswordError("");
         try {
           const result = await exportUserData({ selectedCity, bank });
-          console.log(result);
-          if (result.success && result.fileUrl) {
-            // Create a temporary anchor element and trigger the download
-            const link = document.createElement("a");
-            link.href = result.fileUrl;
-            link.download =
-              result.fileName || `user_data_${selectedCity}_${bank}.xlsx`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+          if (result.success && result.userData) {
+            const handleExport = () => {
+              const workBook = XLSL.utils.book_new();
+              const workSheet = XLSL.utils.json_to_sheet(result.userData);
+              XLSL.utils.book_append_sheet(workBook, workSheet, "Sheet1");
+              XLSL.writeFile(
+                workBook,
+                `user_data_for_${bank} Bank_${selectedCity}.xlsx`
+              );
+            };
+
+            handleExport();
+
             onClose();
           } else {
             throw new Error(result.error || "Failed to generate spreadsheet");

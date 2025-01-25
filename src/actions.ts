@@ -1,5 +1,4 @@
 "use server";
-import * as XLSX from "xlsx";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import prisma from "./lib/db";
@@ -130,14 +129,6 @@ export async function getAccount(id: string) {
   }
 }
 
-// Book actions
-const BookSchema = z.object({
-  title: z.string(),
-  details: z.string().optional(),
-  userId: z.string(),
-  city: z.string(),
-});
-
 export async function exportUserData({
   selectedCity,
   bank,
@@ -153,37 +144,9 @@ export async function exportUserData({
       },
     });
 
-    // Create a worksheet
-    const ws = XLSX.utils.json_to_sheet(userData);
-
-    // Create a workbook and add the worksheet
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Users");
-
-    // Generate buffer
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
-
-    // Upload file
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", excelBuffer);
-    uploadFormData.append("folder", "growth");
-
-    const uploadResponse = await fetch("https://file.tugza.tech", {
-      method: "POST",
-      body: uploadFormData,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error("File upload failed");
-    }
-
-    const uploadData = await uploadResponse.json();
-    const fileUrl = uploadData.url;
-
     return {
       success: true,
-      fileUrl: fileUrl,
-      fileName: `user_data_${selectedCity}_${bank}.xlsx`,
+      userData: userData,
     };
   } catch (error) {
     console.error("Failed to export user data:", error);
