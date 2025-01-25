@@ -35,13 +35,16 @@ export default function Page() {
               <Button onClick={() => setShowSignUp(false)}>Close</Button>
             </div>
             <div className="p-4">
-              <SignUpForm />
+              <SignUpForm bank={bank[0].link} />
             </div>
           </div>
         </div>
       )}
       {showBookDetail && (
-        <BookDetailModal onClose={() => setShowBookDetail(false)} />
+        <BookDetailModal
+          bank={bank[0].link}
+          onClose={() => setShowBookDetail(false)}
+        />
       )}
     </div>
   );

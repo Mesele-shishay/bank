@@ -3,8 +3,6 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,9 +22,11 @@ import {
   CreditCardIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { createAccount } from "@/actions";
+import { useRouter } from "next/navigation";
 
-const formSchema = z.object({
+export const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
@@ -34,13 +34,10 @@ const formSchema = z.object({
   accountType: z.enum(["savings"], {
     required_error: "Please select an account type",
   }),
-  city: z.enum(["mekelle"], {
-    required_error: "Please select an city",
-  }),
-  initialDeposit: z
-    .number()
-    .min(100, "Initial deposit must be at least $100")
-    .default(50),
+  city_id: z.string().min(1, "Please select a city"),
+  state: z.string().min(1, "Please select a state"),
+  initialDeposit: z.number().optional(),
+  bank: z.string(),
   terms: z
     .boolean()
     .refine((val) => val === true, "You must accept the terms and conditions"),
@@ -48,28 +45,92 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button className="w-full" type="submit" disabled={pending}>
-      {pending ? "Creating account..." : "Create account"}
-    </Button>
-  );
-}
-
-export function SignUpForm() {
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors },
-  } = useForm<FormData>({
+export function SignUpForm({ bank }: { bank: string }) {
+  const [states, setStates] = useState<State[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const router = useRouter();
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      accountType: "savings",
+      city_id: undefined,
+      state: "",
+      bank: "",
+      initialDeposit: 100,
+      terms: false,
+    },
   });
 
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = form;
+
+  const watchState = watch("state");
+
+  type City = {
+    id: number;
+    state_id: number;
+    name: string;
+  };
+
+  type State = {
+    id: number;
+    name: string;
+    country_id: number;
+    iso: string;
+  };
+
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const response = await fetch("https://tugza.tech/api/states");
+        const data = await response.json();
+        setStates(data);
+      } catch (error) {
+        console.error("Error fetching states:", error);
+      }
+    };
+    fetchStates();
+  }, []);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      if (watchState) {
+        try {
+          const response = await fetch(
+            `https://tugza.tech/api/city-state/${watchState}`
+          );
+          const data = await response.json();
+          setCities(data);
+          console.log(data);
+        } catch (error) {
+          console.error("Error fetching cities:", error);
+        }
+      }
+    };
+    fetchCities();
+  }, [watchState]);
+
   const onSubmit = async (data: FormData) => {
-    await createAccount(data);
+    try {
+      const result = await createAccount({ ...data, bank });
+
+      if (result?.success) {
+        form.reset();
+        router.refresh();
+      }
+    } catch (error) {
+      console.error("Error creating account:", error);
+      // Add network error handling logic here
+    }
   };
 
   return (
@@ -117,6 +178,7 @@ export function SignUpForm() {
               <p className="text-sm text-red-500">{errors.email.message}</p>
             )}
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
             <div className="relative">
@@ -149,27 +211,57 @@ export function SignUpForm() {
               <p className="text-sm text-red-500">{errors.address.message}</p>
             )}
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="address">City</Label>
+            <Label htmlFor="state">State</Label>
             <Controller
-              name="city"
+              name="state"
               control={control}
               render={({ field }) => (
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select account type" />
+                    <SelectValue placeholder="Select State" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="savings">Savings</SelectItem>
+                    {states?.map((state) => (
+                      <SelectItem key={state.id} value={state.id.toString()}>
+                        {state.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}
             />
-            {errors.address && (
-              <p className="text-sm text-red-500">{errors.address.message}</p>
+            {errors.state && (
+              <p className="text-sm text-red-500">{errors.state.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="city">City</Label>
+            <Controller
+              name="city_id"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value?.toString()}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities?.map((city) => (
+                      <SelectItem key={city?.id} value={city?.id.toString()}>
+                        {city?.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.city_id && (
+              <p className="text-sm text-red-500">{errors.city_id.message}</p>
             )}
           </div>
 
@@ -179,10 +271,7 @@ export function SignUpForm() {
               name="accountType"
               control={control}
               render={({ field }) => (
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select account type" />
                   </SelectTrigger>
@@ -245,7 +334,9 @@ export function SignUpForm() {
           <p className="text-sm text-red-500">{errors.terms.message}</p>
         )}
 
-        <SubmitButton />
+        <Button className="w-full" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Creating account..." : "Create account"}
+        </Button>
       </form>
     </div>
   );

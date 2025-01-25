@@ -1,8 +1,9 @@
 "use server";
-
+import * as XLSX from "xlsx";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import prisma from "./lib/db";
+import { formSchema } from "./app/signup-form";
 
 // User actions
 const UserSchema = z.object({
@@ -61,50 +62,52 @@ export async function getUser(id: string) {
   }
 }
 
-// Account actions
-const AccountSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-  accountType: z.enum(["savings"], {
-    required_error: "Please select an account type",
-  }),
-  initialDeposit: z
-    .number()
-    .min(100, "Initial deposit must be at least $100")
-    .default(100),
-});
+type AccountSchema = z.infer<typeof formSchema>;
 
-export async function createAccount(data: z.infer<typeof AccountSchema>) {
+export async function createAccount(data: AccountSchema) {
   try {
-    const validatedData = AccountSchema.parse(data);
-    const account = await prisma.user.create({});
-    revalidatePath("/accounts");
-    return { success: true, account };
+    const validatedData = data;
+    const user = await prisma.user.create({
+      data: {
+        name: data.name,
+        email: validatedData.email,
+        phone: validatedData.phone,
+        city: validatedData.city_id,
+        address: validatedData.address,
+        book: validatedData.bank || "",
+      },
+    });
+    const account = await prisma.account.create({
+      data: {
+        accountType: validatedData.accountType || "savings",
+        userId: user.id,
+      },
+    });
+    return { success: true };
+    console.log(account);
   } catch (error) {
     console.error("Failed to create account:", error);
     return { success: false, error: "Failed to create account" };
   }
 }
 
-export async function updateAccount(
-  id: string,
-  data: z.infer<typeof AccountSchema>
-) {
-  try {
-    const validatedData = AccountSchema.parse(data);
-    const account = await prisma.account.update({
-      where: { id },
-      data: validatedData,
-    });
-    revalidatePath("/accounts");
-    return { success: true, account };
-  } catch (error) {
-    console.error("Failed to update account:", error);
-    return { success: false, error: "Failed to update account" };
-  }
-}
+// export async function updateAccount(
+//   id: string,
+//   data: z.infer<typeof AccountSchema>
+// ) {
+//   try {
+//     const validatedData = AccountSchema.parse(data);
+//     const account = await prisma.account.update({
+//       where: { id },
+//       data: validatedData,
+//     });
+//     revalidatePath("/accounts");
+//     return { success: true, account };
+//   } catch (error) {
+//     console.error("Failed to update account:", error);
+//     return { success: false, error: "Failed to update account" };
+//   }
+// }
 
 export async function deleteAccount(id: string) {
   try {
@@ -135,50 +138,55 @@ const BookSchema = z.object({
   city: z.string(),
 });
 
-export async function createBook(data: z.infer<typeof BookSchema>) {
+export async function exportUserData({
+  selectedCity,
+  bank,
+}: {
+  selectedCity: string;
+  bank: string;
+}) {
   try {
-    const validatedData = BookSchema.parse(data);
-    const book = await prisma.book.create({ data: validatedData });
-    revalidatePath("/books");
-    return { success: true, book };
-  } catch (error) {
-    console.error("Failed to create book:", error);
-    return { success: false, error: "Failed to create book" };
-  }
-}
-
-export async function updateBook(id: string, data: z.infer<typeof BookSchema>) {
-  try {
-    const validatedData = BookSchema.parse(data);
-    const book = await prisma.book.update({
-      where: { id },
-      data: validatedData,
+    const userData = await prisma.user.findMany({
+      where: {
+        city: selectedCity,
+        book: bank,
+      },
     });
-    revalidatePath("/books");
-    return { success: true, book };
-  } catch (error) {
-    console.error("Failed to update book:", error);
-    return { success: false, error: "Failed to update book" };
-  }
-}
 
-export async function deleteBook(id: string) {
-  try {
-    await prisma.book.delete({ where: { id } });
-    revalidatePath("/books");
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to delete book:", error);
-    return { success: false, error: "Failed to delete book" };
-  }
-}
+    // Create a worksheet
+    const ws = XLSX.utils.json_to_sheet(userData);
 
-export async function getBook(id: string) {
-  try {
-    const book = await prisma.book.findUnique({ where: { id } });
-    return { success: true, book };
+    // Create a workbook and add the worksheet
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Users");
+
+    // Generate buffer
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
+
+    // Upload file
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", excelBuffer);
+    uploadFormData.append("folder", "growth");
+
+    const uploadResponse = await fetch("https://file.tugza.tech", {
+      method: "POST",
+      body: uploadFormData,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error("File upload failed");
+    }
+
+    const uploadData = await uploadResponse.json();
+    const fileUrl = uploadData.url;
+
+    return {
+      success: true,
+      fileUrl: fileUrl,
+      fileName: `user_data_${selectedCity}_${bank}.xlsx`,
+    };
   } catch (error) {
-    console.error("Failed to get book:", error);
-    return { success: false, error: "Failed to get book" };
+    console.error("Failed to export user data:", error);
+    return { success: false, error: "Failed to export user data" };
   }
 }
