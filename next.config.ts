@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "pagedone.io",
+        hostname: "tugza.tech",
       },
     ],
   },

@@ -39,7 +39,6 @@ export function BookDetailModal({
 
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
-  const selectedCityName = cities.filter((city) => city.id == selectedCity);
 
   const handleExport = async () => {
     if (selectedCity) {
