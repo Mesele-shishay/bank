@@ -24,17 +24,30 @@ import {
 import { toast } from "sonner";
 import { Camera } from "lucide-react";
 import Image from "next/image";
+import { generateDigitalCoin } from "@/actions";
 
 interface DigitalMoneyFormProps {
   onClose: () => void;
 }
 
-const formSchema = z.object({
+export const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   country: z.string().min(1, "Please select a country"),
   state: z.string().min(1, "Please select a state"),
   city: z.string().min(1, "Please select a city"),
-  amount: z.enum(["5", "10", "15", "25", "50", "100"]),
+  amount: z.enum([
+    "100",
+    "200",
+    "300",
+    "400",
+    "500",
+    "600",
+    "700",
+    "800",
+    "900",
+    "1000",
+  ]),
+  phone: z.string().min(10),
   idPhoto: z
     .instanceof(File)
     .refine((file) => file.size <= 5000000, `Max file size is 5MB.`)
@@ -62,7 +75,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
       country: "",
       state: "",
       city: "",
-      amount: "5",
+      amount: "100",
       idPhoto: undefined,
       businessTIN: "",
     },
@@ -133,25 +146,32 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (value instanceof File) {
-          formData.append(key, value);
-        } else {
-          formData.append(key, String(value));
+      let uploadedUrl = "";
+      if (data?.idPhoto || null) {
+        const formData = new FormData();
+        formData.append("file", data.idPhoto);
+        formData.append("folder", "growth");
+
+        const uploadResponse = await fetch("https://file.tugza.tech", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload image");
         }
-      });
+        const { url } = await uploadResponse.json();
+        uploadedUrl = url;
+      }
 
-      const response = await fetch("/api/digital-money", {
-        method: "POST",
-        body: formData,
+      const response = await generateDigitalCoin({
+        ...data,
+        idPhoto: uploadedUrl,
       });
-
-      if (!response.ok) {
+      if (!response?.success) {
         throw new Error("Failed to submit form");
       }
 
-      const result = await response.json();
       toast.success("Digital money request submitted successfully!", {
         description: `Your unique number is: ${result.uniqueNumber}`,
       });
@@ -255,6 +275,24 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
                   ))}
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone Number</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  placeholder="Enter Phone Number ex:0909090909"
+                  maxLength={10}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

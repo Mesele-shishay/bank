@@ -1,7 +1,7 @@
 "use server";
 import { z } from "zod";
 import prisma from "./lib/db";
-import { formSchema } from "./app/signup-form";
+import { formSchema } from "./components/DigitalMoneyForm";
 
 type AccountSchema = z.infer<typeof formSchema>;
 
@@ -54,5 +54,26 @@ export async function exportUserData({
   } catch (error) {
     console.error("Failed to export user data:", error);
     return { success: false, error: "Failed to export user data" };
+  }
+}
+
+export async function generateDigitalCoin(data: z.infer<typeof formSchema>) {
+  try {
+    const { name, country, city, state, amount, phone, idPhoto } = data;
+    const coin = await prisma.digitalCoin.create({
+      data: {
+        name,
+        country,
+        city,
+        state,
+        amount,
+        generatorPhoneNumber: phone,
+        IdPhoto: idPhoto,
+      },
+    });
+    return { success: true, coin: coin.amount };
+  } catch (error) {
+    console.error("Error generating digital coin:", error);
+    return { success: false, error: "Failed to generate digital coin" };
   }
 }

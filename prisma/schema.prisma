@@ -28,3 +28,17 @@ model Account {
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
 }
+
+model DigitalCoin {
+    id                   String   @id @default(uuid()) // Unique identifier
+    name                 String
+    country              String
+    state                String
+    city                 String
+    IdPhoto              String
+    amount               String
+    generatorPhoneNumber String
+    usedByPhoneNumber    String?
+    createdAt            DateTime @default(now()) // Record creation timestamp
+    updatedAt            DateTime @updatedAt // Record update timestamp
+}
