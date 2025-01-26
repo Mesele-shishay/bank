@@ -29,9 +29,9 @@ interface DigitalMoneyFormProps {
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  country: z.object({ id: z.string(), name: z.string() }),
-  state: z.object({ id: z.string(), name: z.string() }),
-  city: z.object({ id: z.string(), name: z.string() }),
+  country: z.string().min(1, "Please select a country"),
+  state: z.string().min(1, "Please select a state"),
+  city: z.string().min(1, "Please select a city"),
   amount: z.enum(["5", "10", "15", "25", "50", "100"]),
 });
 
@@ -44,9 +44,9 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      country: { id: "", name: "" },
-      state: { id: "", name: "" },
-      city: { id: "", name: "" },
+      country: "",
+      state: "",
+      city: "",
       amount: "5",
     },
   });
@@ -77,23 +77,23 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
   }, []);
 
   useEffect(() => {
-    if (selectedCountry?.id) {
-      fetch(`${apiUrl}/api/locations?countryId=${selectedCountry.id}`)
+    if (selectedCountry) {
+      fetch(`${apiUrl}/api/locations?countryId=${selectedCountry}`)
         .then((res) => res.json())
         .then((data) => setStates(data.states));
-      form.setValue("state", { id: "", name: "" });
-      form.setValue("city", { id: "", name: "" });
+      form.setValue("state", "");
+      form.setValue("city", "");
     }
   }, [selectedCountry, form]);
 
   useEffect(() => {
-    if (selectedState?.id || 0) {
+    if (selectedState) {
       fetch(
-        `${apiUrl}/api/locations?countryId=${selectedCountry.id}&stateId=${selectedState.id}`
+        `${apiUrl}/api/locations?countryId=${selectedCountry}&stateId=${selectedState}`
       )
         .then((res) => res.json())
         .then((data) => setCities(data.cities));
-      form.setValue("city", { id: "", name: "" });
+      form.setValue("city", "");
     }
   }, [selectedState, selectedCountry, form]);
 
@@ -151,21 +151,15 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Country</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  const selectedCountry = countries.find((c) => c.id === value);
-                  field.onChange(selectedCountry);
-                }}
-                value={field.value.id}
-              >
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a country" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {countries?.map((country) => (
-                    <SelectItem key={country.id} value={country.id}>
+                  {countries?.map((country, index) => (
+                    <SelectItem key={index} value={country?.name}>
                       {country.name}
                     </SelectItem>
                   ))}
@@ -182,13 +176,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>State</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  const selectedState = states.find((s) => s.id === value);
-                  field.onChange(selectedState);
-                }}
-                value={field.value.id}
-              >
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a state" />
@@ -196,7 +184,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
                 </FormControl>
                 <SelectContent>
                   {states?.map((state) => (
-                    <SelectItem key={state.id} value={state.id}>
+                    <SelectItem key={state?.id} value={state.name}>
                       {state.name}
                     </SelectItem>
                   ))}
@@ -213,13 +201,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>City</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  const selectedCity = cities.find((c) => c.id === value);
-                  field.onChange(selectedCity);
-                }}
-                value={field.value.id}
-              >
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a city" />
@@ -227,7 +209,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
                 </FormControl>
                 <SelectContent>
                   {cities?.map((city) => (
-                    <SelectItem key={city.id} value={city.id}>
+                    <SelectItem key={city?.id} value={city?.name}>
                       {city.name}
                     </SelectItem>
                   ))}
