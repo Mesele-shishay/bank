@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,6 +22,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "sonner";
+import { Camera } from "lucide-react";
+import Image from "next/image";
 
 interface DigitalMoneyFormProps {
   onClose: () => void;
@@ -33,12 +35,25 @@ const formSchema = z.object({
   state: z.string().min(1, "Please select a state"),
   city: z.string().min(1, "Please select a city"),
   amount: z.enum(["5", "10", "15", "25", "50", "100"]),
+  idPhoto: z
+    .instanceof(File)
+    .refine((file) => file.size <= 5000000, `Max file size is 5MB.`)
+    .refine(
+      (file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type),
+      "Only .jpg, .png, and .webp formats are supported."
+    )
+    .optional(),
+  businessTIN: z
+    .string()
+    .regex(/^\d{15}$/, "Business TIN must be a 15-digit number"),
 });
 
 export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
   const [countries, setCountries] = useState<Country[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -48,6 +63,8 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
       state: "",
       city: "",
       amount: "5",
+      idPhoto: undefined,
+      businessTIN: "",
     },
   });
 
@@ -68,7 +85,12 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
 
   const { watch } = form;
   const selectedCountry = watch("country");
+  const selectedCountryID = countries?.filter(
+    (c) => selectedCountry == c?.name
+  );
   const selectedState = watch("state");
+
+  const selectedStateID = states?.filter((c) => c.name == selectedState);
   const apiUrl = "https://tugza.tech";
   useEffect(() => {
     fetch(`${apiUrl}/api/locations`)
@@ -78,7 +100,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
 
   useEffect(() => {
     if (selectedCountry) {
-      fetch(`${apiUrl}/api/locations?countryId=${selectedCountry}`)
+      fetch(`${apiUrl}/api/locations?countryId=${selectedCountryID[0].id}`)
         .then((res) => res.json())
         .then((data) => setStates(data.states));
       form.setValue("state", "");
@@ -89,7 +111,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
   useEffect(() => {
     if (selectedState) {
       fetch(
-        `${apiUrl}/api/locations?countryId=${selectedCountry}&stateId=${selectedState}`
+        `${apiUrl}/api/locations?countryId=${selectedCountryID[0].id}&stateId=${selectedStateID[0].id}`
       )
         .then((res) => res.json())
         .then((data) => setCities(data.cities));
@@ -97,14 +119,32 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
     }
   }, [selectedState, selectedCountry, form]);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      form.setValue("idPhoto", file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value instanceof File) {
+          formData.append(key, value);
+        } else {
+          formData.append(key, String(value));
+        }
+      });
+
       const response = await fetch("/api/digital-money", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -138,7 +178,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
             <FormItem>
               <FormLabel>Name</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} placeholder="Full Name" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -222,6 +262,62 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
 
         <FormField
           control={form.control}
+          name="idPhoto"
+          render={() => (
+            <FormItem>
+              <FormLabel>Passport or Digital ID Photo</FormLabel>
+              <FormControl>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileChange}
+                    ref={fileInputRef}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    variant="outline"
+                  >
+                    <Camera className="mr-2 h-4 w-4" /> Upload Photo
+                  </Button>
+                  {previewUrl && (
+                    <Image
+                      width={50}
+                      height={50}
+                      src={previewUrl || ""}
+                      alt="ID Preview"
+                      className="h-10 w-10 object-cover rounded"
+                    />
+                  )}
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="businessTIN"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Business TIN</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  placeholder="15-digit Business TIN"
+                  maxLength={15}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="amount"
           render={({ field }) => (
             <FormItem>
@@ -233,7 +329,18 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {["5", "10", "15", "25", "50", "100"].map((amount) => (
+                  {[
+                    "100",
+                    "200",
+                    "300",
+                    "400",
+                    "500",
+                    "600",
+                    "700",
+                    "800",
+                    "900",
+                    "1000",
+                  ].map((amount) => (
                     <SelectItem key={amount} value={amount}>
                       {amount}
                     </SelectItem>

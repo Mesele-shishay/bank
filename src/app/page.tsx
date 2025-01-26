@@ -4,9 +4,9 @@ import { useState } from "react";
 import BanksCard from "./BanksCard";
 import Modal from "@/components/Modal";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import DigitalMoneyForm from "@/components/DigitalMoneyForm";
 import { Toaster } from "@/components/ui/toaster";
+import Header from "@/components/Header";
 
 export const banks = [
   {
@@ -53,26 +53,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-green-100">
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Image
-              alt="logo"
-              src={
-                "https://tugza.tech/_next/image?url=https%3A%2F%2Ftugza.com%2Fimages%2Ficons%2Flogo.jpg&w=128&q=75"
-              }
-              width={100}
-              height={100}
-              className="size-10 rounded-full text-green-600"
-            />
-            <span className="text-xl font-bold text-gray-800">Tugza Bank</span>
-          </div>
-          <nav>
-            <ul className="flex space-x-4"></ul>
-          </nav>
-        </div>
-      </header>
-
+      <Header />
       <main>
         <section className="container mx-auto px-4 py-10 pb-0 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
