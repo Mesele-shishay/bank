@@ -63,10 +63,7 @@ export default function Home() {
             Get TUGZA digital money to use our innovative products
           </p>
           <div className="grid grid-cols-2 gap-4 mb-3 max-w-4xl mx-auto">
-            <Button
-              className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition duration-300"
-              onClick={() => setIsDigitalMoneyModalOpen(true)}
-            >
+            <Button onClick={() => setIsDigitalMoneyModalOpen(true)}>
               Take Digital Money
             </Button>
             <Button onClick={() => setIsBanksModalOpen(true)} className="">
@@ -83,7 +80,7 @@ export default function Home() {
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
           List Of Banks
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {banks.map((bank, index) => (
             <BanksCard key={index} {...bank} />
           ))}

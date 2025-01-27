@@ -20,13 +20,15 @@ import {
   PhoneIcon,
   HomeIcon,
   CreditCardIcon,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createAccount } from "@/actions";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export const formSchema = z.object({
+const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
@@ -36,7 +38,7 @@ export const formSchema = z.object({
   }),
   city_id: z.string().min(1, "Please select a city"),
   state: z.string().min(1, "Please select a state"),
-  initialDeposit: z.number().optional(),
+  initialDeposit: z.number().min(100, "Initial deposit must be at least 100"),
   bank: z.string(),
   terms: z
     .boolean()
@@ -45,10 +47,48 @@ export const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export function SignUpForm({ bank }: { bank: string }) {
+interface State {
+  id: number;
+  name: string;
+  country_id: number;
+  iso: string;
+}
+
+interface City {
+  id: number;
+  state_id: number;
+  name: string;
+}
+
+function FormSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2 text-center">
+        <Skeleton className="h-8 w-3/4 mx-auto" />
+        <Skeleton className="h-4 w-1/2 mx-auto" />
+      </div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-1/4" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </div>
+  );
+}
+
+export function SignUpForm({ bank }: { bank?: string }) {
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -57,9 +97,9 @@ export function SignUpForm({ bank }: { bank: string }) {
       phone: "",
       address: "",
       accountType: "savings",
-      city_id: undefined,
+      city_id: "",
       state: "",
-      bank: "",
+      bank: bank || "",
       initialDeposit: 100,
       terms: false,
     },
@@ -75,19 +115,6 @@ export function SignUpForm({ bank }: { bank: string }) {
 
   const watchState = watch("state");
 
-  type City = {
-    id: number;
-    state_id: number;
-    name: string;
-  };
-
-  type State = {
-    id: number;
-    name: string;
-    country_id: number;
-    iso: string;
-  };
-
   useEffect(() => {
     const fetchStates = async () => {
       try {
@@ -96,6 +123,8 @@ export function SignUpForm({ bank }: { bank: string }) {
         setStates(data);
       } catch (error) {
         console.error("Error fetching states:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchStates();
@@ -110,7 +139,6 @@ export function SignUpForm({ bank }: { bank: string }) {
           );
           const data = await response.json();
           setCities(data);
-          console.log(data);
         } catch (error) {
           console.error("Error fetching cities:", error);
         }
@@ -132,6 +160,10 @@ export function SignUpForm({ bank }: { bank: string }) {
       // Add network error handling logic here
     }
   };
+
+  if (isLoading) {
+    return <FormSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -223,7 +255,7 @@ export function SignUpForm({ bank }: { bank: string }) {
                     <SelectValue placeholder="Select State" />
                   </SelectTrigger>
                   <SelectContent>
-                    {states?.map((state) => (
+                    {states.map((state) => (
                       <SelectItem key={state.id} value={state.id.toString()}>
                         {state.name}
                       </SelectItem>
@@ -243,17 +275,14 @@ export function SignUpForm({ bank }: { bank: string }) {
               name="city_id"
               control={control}
               render={({ field }) => (
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value?.toString()}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select city" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cities?.map((city) => (
-                      <SelectItem key={city?.id} value={city?.id.toString()}>
-                        {city?.name}
+                    {cities.map((city) => (
+                      <SelectItem key={city.id} value={city.id.toString()}>
+                        {city.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -335,7 +364,14 @@ export function SignUpForm({ bank }: { bank: string }) {
         )}
 
         <Button className="w-full" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating account..." : "Create account"}
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating account...
+            </>
+          ) : (
+            "Create account"
+          )}
         </Button>
       </form>
     </div>
