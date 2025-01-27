@@ -39,6 +39,7 @@ model DigitalCoin {
     amount               String
     generatorPhoneNumber String
     usedByPhoneNumber    String?
+    coinToken            String
     createdAt            DateTime @default(now()) // Record creation timestamp
     updatedAt            DateTime @updatedAt // Record update timestamp
 }

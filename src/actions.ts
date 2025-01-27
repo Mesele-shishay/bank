@@ -60,6 +60,9 @@ export async function exportUserData({
 export async function generateDigitalCoin(data: z.infer<typeof formSchema>) {
   try {
     const { name, country, city, state, amount, phone, idPhoto } = data;
+    const coinToken = Math.floor(
+      100000000000000 + Math.random() * 900000000000000
+    ).toString();
     const coin = await prisma.digitalCoin.create({
       data: {
         name,
@@ -69,9 +72,10 @@ export async function generateDigitalCoin(data: z.infer<typeof formSchema>) {
         amount,
         generatorPhoneNumber: phone,
         IdPhoto: idPhoto,
+        coinToken,
       },
     });
-    return { success: true, coin: coin.amount };
+    return { success: true, coin: coin.amount, coinToken: coin.coinToken };
   } catch (error) {
     console.error("Error generating digital coin:", error);
     return { success: false, error: "Failed to generate digital coin" };
