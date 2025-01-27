@@ -57,7 +57,7 @@ const formSchema = z.object({
   ]),
   phone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"),
   idPhoto: z
-    .instanceof(File)
+    .any()
     .refine((file) => file.size <= 5000000, `Max file size is 5MB.`)
     .refine(
       (file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type),
