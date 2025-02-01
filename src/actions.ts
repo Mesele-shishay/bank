@@ -1,6 +1,11 @@
 "use server";
+
 import { z } from "zod";
-import prisma from "./lib/db";
+import { PrismaClient } from "@prisma/client";
+
+// Ensure this import is correct for your project structure
+const prisma = new PrismaClient();
+
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   country: z.string().min(1, "Please select a country"),
@@ -27,29 +32,48 @@ const formSchema = z.object({
   isExistingUser: z.boolean().optional(),
 });
 
-type AccountSchema = z.infer<typeof formSchema>;
+type FormSchema = z.infer<typeof formSchema>;
 
-export async function createAccount(data: AccountSchema) {
+interface AccountCreationResult {
+  success: boolean;
+  error?: string;
+}
+
+interface UserExportResult {
+  success: boolean;
+  userData?: any[]; // Replace 'any' with a more specific type if possible
+  error?: string;
+}
+
+interface DigitalCoinResult {
+  success: boolean;
+  coin?: string;
+  coinToken?: string;
+  error?: string;
+}
+
+export async function createAccount(
+  data: FormSchema
+): Promise<AccountCreationResult> {
   try {
-    const validatedData = data;
     const user = await prisma.user.create({
       data: {
         name: data.name,
-        email: validatedData.email,
-        phone: validatedData.phone,
-        city: validatedData.city_id,
-        address: validatedData.address,
-        book: validatedData.bank || "",
+        phone: data.phone,
+        city: data.city,
+        // Removed email and address as they're not in the FormSchema
+        book: "", // Set a default value or remove if not needed
       },
     });
-    const account = await prisma.account.create({
+
+    await prisma.account.create({
       data: {
-        accountType: validatedData.accountType || "savings",
+        accountType: "savings", // Set a default value
         userId: user.id,
       },
     });
+
     return { success: true };
-    console.log(account);
   } catch (error) {
     console.error("Failed to create account:", error);
     return { success: false, error: "Failed to create account" };
@@ -62,7 +86,7 @@ export async function exportUserData({
 }: {
   selectedCity: string;
   bank: string;
-}) {
+}): Promise<UserExportResult> {
   try {
     const userData = await prisma.user.findMany({
       where: {
@@ -81,7 +105,9 @@ export async function exportUserData({
   }
 }
 
-export async function generateDigitalCoin(data: z.infer<typeof formSchema>) {
+export async function generateDigitalCoin(
+  data: FormSchema
+): Promise<DigitalCoinResult> {
   try {
     const {
       name,
@@ -98,7 +124,6 @@ export async function generateDigitalCoin(data: z.infer<typeof formSchema>) {
     ).toString();
 
     if (isExistingUser) {
-      // For existing users, we only need to validate the phone number and generate a new coin
       const existingUser = await prisma.digitalCoin.findFirst({
         where: { generatorPhoneNumber: phone },
       });
@@ -122,7 +147,6 @@ export async function generateDigitalCoin(data: z.infer<typeof formSchema>) {
 
       return { success: true, coin: coin.amount, coinToken: coin.coinToken };
     } else {
-      // For new users, create a new record with all the provided information
       const coin = await prisma.digitalCoin.create({
         data: {
           name,
@@ -131,7 +155,7 @@ export async function generateDigitalCoin(data: z.infer<typeof formSchema>) {
           state,
           amount,
           generatorPhoneNumber: phone,
-          IdPhoto: idPhoto,
+          IdPhoto: idPhoto || "",
           coinToken,
         },
       });

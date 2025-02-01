@@ -282,7 +282,7 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
         isExistingUser: true,
       });
       if (!response?.success) {
-        throw new Error(response.error);
+        throw new Error(response.error || "Failed to generate digital money");
       }
 
       toast.success(`Your ${data.amount} Coin Generated`, {
@@ -312,7 +312,8 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
     } catch (error) {
       console.error("Error generating digital money:", error);
       toast.error("Digital money request failed!", {
-        description: error.message,
+        description:
+          error instanceof Error ? error.message : "An error occurred",
       });
     } finally {
       setIsLoading(false);
@@ -586,79 +587,85 @@ export default function DigitalMoneyForm({ onClose }: DigitalMoneyFormProps) {
                 )}
                 className="space-y-4"
               >
-                <FormField
-                  control={registeredUserForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Enter Phone Number (e.g., 0909090909)"
-                          maxLength={10}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {isFormLoading ? (
+                  <FormSkeleton />
+                ) : (
+                  <>
+                    <FormField
+                      control={registeredUserForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="Enter Phone Number (e.g., 0909090909)"
+                              maxLength={10}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <Controller
-                  name="amount"
-                  control={registeredUserForm.control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Amount</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an amount" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {[
-                            "50",
-                            "100",
-                            "200",
-                            "300",
-                            "400",
-                            "500",
-                            "600",
-                            "700",
-                            "800",
-                            "900",
-                            "1000",
-                          ].map((amount) => (
-                            <SelectItem key={amount} value={amount}>
-                              {amount}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <Controller
+                      name="amount"
+                      control={registeredUserForm.control}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select an amount" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {[
+                                "50",
+                                "100",
+                                "200",
+                                "300",
+                                "400",
+                                "500",
+                                "600",
+                                "700",
+                                "800",
+                                "900",
+                                "1000",
+                              ].map((amount) => (
+                                <SelectItem key={amount} value={amount}>
+                                  {amount}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={onClose}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      "Generate Digital Money"
-                    )}
-                  </Button>
-                </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button type="button" variant="outline" onClick={onClose}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={isLoading}>
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          "Generate Digital Money"
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </form>
             </Form>
           </TabsContent>
